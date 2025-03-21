@@ -11,7 +11,7 @@
 #include <zephyr/sys/mem_manage.h>
 #include <string.h>
 
-#include "mmu.h"
+#include <riscv_mmu.h>
 
 /*---------------- External Variables ----------*/
 // Linker Symbols for Kernel Memory Regions
@@ -25,7 +25,9 @@ extern uintptr_t _kernel_text_end;
 typedef uint32_t riscv_pte_t; // A single 32-bit Sv32 Page Table Entry (PTE)
 static riscv_pte_t *root_page_table; // Pointer to the root page table (Level 1)
 
-
+/*----------------- PFP ----------------------*/
+void riscv_tlb_flush_all(void);
+void riscv_tlb_flush(uintptr_t);
 
 /*----------------- Static Functions --------*/
 
@@ -73,8 +75,8 @@ void z_riscv_mm_init(void)
     uintptr_t kernel_virt = (uintptr_t)&_kernel_text_start;
 
     // Ensure physical addresses are page-aligned
-    kernel_start_phys = kernel_start_phys & PTE_PPN_MASK;
-    kernel_end_phys = (kernel_end_phys + PAGE_SIZE - 1) & PTE_PPN_MASK;
+    kernel_start_phys = kernel_start_phys & SV32_PTE_PPN_MASK;
+    kernel_end_phys = (kernel_end_phys + PAGE_SIZE - 1) & SV32_PTE_PPN_MASK;
 
     printk("MMU: Kernel physical start: %p, end: %p, virtual: %p\n",
            (void *)kernel_start_phys, (void *)kernel_end_phys, (void *)kernel_virt);
@@ -100,14 +102,15 @@ void z_riscv_mm_init(void)
             printk("MMU: Allocated Level 0 page table at %p for L1 index %d\n", level0_page_table, l1_index);
 
             // Store Level 0 page table pointer in Level 1 entry
-            root_page_table[l1_index] = ((uintptr_t)level0_page_table >> PTE_PPN_SHIFT) << PTE_PPN_POS | PTE_VALID;
+            root_page_table[l1_index] = ((uintptr_t)level0_page_table >> SV32_PTE_PPN_SHIFT) << SV32_PTE_PPN_POS | PTE_VALID;
         }
 
         /* Get Level 0 Page Table Address */
-        riscv_pte_t *level0_page_table = (riscv_pte_t *)((root_page_table[l1_index] & PTE_PPN_MASK) >> PTE_PPN_POS << PTE_PPN_SHIFT);
+        uintptr_t l0_pa = ((uintptr_t)(root_page_table[l1_index] & SV32_PTE_PPN_MASK) >> SV32_PTE_PPN_POS) << SV32_PTE_PPN_SHIFT;
+        riscv_pte_t *level0_page_table = (riscv_pte_t *)l0_pa;
 
         /* Map the Virtual Address to Physical Address */
-        level0_page_table[l0_index] = ((phys & PTE_PPN_MASK) >> PTE_PPN_SHIFT) << PTE_PPN_POS
+        level0_page_table[l0_index] = ((phys & SV32_PTE_PPN_MASK) >> SV32_PTE_PPN_SHIFT) << SV32_PTE_PPN_POS
                                       | (PTE_VALID | PTE_READ | PTE_WRITE | PTE_EXEC | PTE_GLOBAL);
 
         printk("MMU: Mapped VA %p -> PA %p (L1 Index %d, L0 Index %d)\n", 
@@ -119,7 +122,7 @@ void z_riscv_mm_init(void)
     }
 
     /* 3. Set `satp` Register to Enable MMU */
-    uintptr_t root_pte_ppn = ((uintptr_t)root_page_table) >> PTE_PPN_SHIFT; // Get root page table’s PPN
+    uintptr_t root_pte_ppn = ((uintptr_t)root_page_table) >> SV32_PTE_PPN_SHIFT; // Get root page table’s PPN
     uintptr_t satp_value = (1UL << 31) | root_pte_ppn; // Sv32 mode + root page table
 
     __asm__ volatile ("csrw satp, %0" :: "r" (satp_value));
@@ -165,14 +168,15 @@ void riscv_map_page(uintptr_t virt, uintptr_t phys, uint32_t flags)
         printk("MMU: Allocated Level 0 page table at %p for L1 index %d\n", level0_page_table, l1_index);
 
         /* Store Level 0 page table pointer in Level 1 entry */
-        root_page_table[l1_index] = ((uintptr_t)level0_page_table >> PTE_PPN_SHIFT) << PTE_PPN_POS | PTE_VALID;
+        root_page_table[l1_index] = ((uintptr_t)level0_page_table >> SV32_PTE_PPN_SHIFT) << SV32_PTE_PPN_POS | PTE_VALID;
     }
 
     /* 2. Get Level 0 Page Table */
-    riscv_pte_t *level0_page_table = (riscv_pte_t *)((root_page_table[l1_index] & PTE_PPN_MASK) >> PTE_PPN_POS << PTE_PPN_SHIFT);
+    uintptr_t l0_pa = ((root_page_table[l1_index] & SV32_PTE_PPN_MASK) >> SV32_PTE_PPN_POS) << SV32_PTE_PPN_SHIFT;
+    riscv_pte_t *level0_page_table = (riscv_pte_t *)l0_pa;
 
     /* 3. Map the Virtual Address to Physical Address */
-    level0_page_table[l0_index] = ((phys & PTE_PPN_MASK) >> PTE_PPN_SHIFT) << PTE_PPN_POS
+    level0_page_table[l0_index] = ((phys & SV32_PTE_PPN_MASK) >> SV32_PTE_PPN_SHIFT) << SV32_PTE_PPN_POS
                                   | (PTE_VALID | flags);
 
     printk("MMU: Mapped VA %p -> PA %p with flags 0x%x (L1 Index %d, L0 Index %d)\n",
@@ -202,7 +206,8 @@ void riscv_unmap_page(uintptr_t virt)
     }
 
     /* 2. Get the L0 Page Table Address */
-    riscv_pte_t *level0_page_table = (riscv_pte_t *)((root_page_table[l1_index] & PTE_PPN_MASK) >> PTE_PPN_POS << PTE_PPN_SHIFT);
+    uintptr_t l0_pa = ((root_page_table[l1_index] & SV32_PTE_PPN_MASK) >> SV32_PTE_PPN_POS) << SV32_PTE_PPN_SHIFT;
+    riscv_pte_t *level0_page_table = (riscv_pte_t *)l0_pa;
 
     /* 3. Check if Mapping Exists */
     if (!(level0_page_table[l0_index] & PTE_VALID)) {
@@ -333,8 +338,9 @@ int arch_mem_unmap(void *virt, size_t size)
  */
 int arch_page_phys_get(void *virt, uintptr_t *phys)
 {
-    uint32_t l1_index = L1_INDEX((uintptr_t)virt);
-    uint32_t l0_index = L0_INDEX((uintptr_t)virt);
+    uintptr_t va = (uintptr_t)virt;
+    uint32_t l1_index = L1_INDEX(va);
+    uint32_t l0_index = L0_INDEX(va);
 
     /* 1. Check if the L0 Page Table Exists */
     if (!(root_page_table[l1_index] & PTE_VALID)) {
@@ -343,7 +349,8 @@ int arch_page_phys_get(void *virt, uintptr_t *phys)
     }
 
     /* 2. Get the L0 Page Table */
-    riscv_pte_t *level0_page_table = (riscv_pte_t *)((root_page_table[l1_index] & PTE_PPN_MASK) >> PTE_PPN_POS << PTE_PPN_SHIFT);
+    uintptr_t l0_pa = ((root_page_table[l1_index] & SV32_PTE_PPN_MASK) >> SV32_PTE_PPN_POS) << PTE_PPN_SHIFT;
+    riscv_pte_t *level0_page_table = (riscv_pte_t *)l0_pa;
 
     /* 3. Check if the Mapping Exists */
     if (!(level0_page_table[l0_index] & PTE_VALID)) {
@@ -352,7 +359,7 @@ int arch_page_phys_get(void *virt, uintptr_t *phys)
     }
 
     /* 4. Extract the Physical Address */
-    *phys = ((level0_page_table[l0_index] >> PTE_PPN_POS) << PTE_PPN_SHIFT) | ((uintptr_t)virt & (PAGE_SIZE - 1));
+    *phys = ((level0_page_table[l0_index] >> SV32_PTE_PPN_POS) << PTE_PPN_SHIFT) | (va & (PAGE_SIZE - 1));
 
     printk("MMU: arch_page_phys_get() - VA %p -> PA %p\n", virt, (void *)*phys);
 
@@ -380,14 +387,15 @@ int riscv_handle_page_fault(uintptr_t fault_addr)
     printk("MMU: Handling page fault at VA %p\n", (void *)fault_addr);
 
     // Step 2: Allocate a new physical page (for now, just get a dummy page)
-    uintptr_t new_phys_page = (uintptr_t)k_malloc(PAGE_SIZE);
-    if (!new_phys_page) {
+    void *new_page_ptr = k_malloc(PAGE_SIZE);
+    if (!new_page_ptr) {
         printk("MMU: Page fault handler failed - Out of memory\n");
         return -ENOMEM;
     }
 
     // Ensure the physical page is cleared
-    memset((void *)new_phys_page, 0, PAGE_SIZE);
+    memset(new_page_ptr, 0, PAGE_SIZE);
+    uintptr_t new_phys_page = (uintptr_t)new_page_ptr;
     printk("MMU: Allocated new page at PA %p for VA %p\n", (void *)new_phys_page, (void *)fault_addr);
 
     // Step 3: Map the new page into the MMU
