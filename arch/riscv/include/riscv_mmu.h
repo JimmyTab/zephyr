@@ -8,6 +8,7 @@
 
 #define PAGE_SIZE 4096  // 4 KiB page size for Sv32
 #define PTE_SIZE 4      // Each PTE (Page Table Entry) is 4 bytes
+#define RISCV_MMU_PT_NUM_ENTRIES 1024 //Number of entries  per page table 
 
 // Define bit flags for PTE entries
 #define PTE_VALID    (1 << 0)  // Marks entry as valid
@@ -41,6 +42,10 @@ union riscv_mmu_page_table_entry {
         uint32_t ppn_0              : 10;
         uint32_t ppn_1              : 12;  /*[31]*/
     } page_table_entry;
+};
+
+struct riscv_mmu_page_table {
+	union riscv_mmu_page_table_entry entries[RISCV_MMU_PT_NUM_ENTRIES];
 };
 
 
