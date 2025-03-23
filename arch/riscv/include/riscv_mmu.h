@@ -27,7 +27,21 @@
 // Functions to be used by Zephyr
 void z_riscv_mm_init(void);
 
-
+union riscv_mmu_page_table_entry {
+    struct {
+        uint32_t v                  : 1;  /* [00]*/
+        uint32_t r                  : 1;
+        uint32_t w                  : 1;
+        uint32_t x                  : 1;
+        uint32_t u                  : 1;
+        uint32_t g                  : 1;
+        uint32_t a                  : 1;
+        uint32_t d                  : 1;
+        uint32_t rsx                : 2;
+        uint32_t ppn_0              : 10;
+        uint32_t ppn_1              : 12;  /*[31]*/
+    } page_table_entry;
+};
 
 
 #endif //MMU_H_
