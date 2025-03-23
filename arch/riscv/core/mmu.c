@@ -220,7 +220,7 @@ void riscv_unmap_page(uintptr_t virt)
     printk("MMU: Unmapped VA %p (L1 Index %d, L0 Index %d)\n", (void *)virt, l1_index, l0_index);
 
     /* 5. Flush TLB for this address */
-    __asm__ volatile ("sfence.vma %0, zero" :: "r"(virt));
+    void riscv_tlb_flush(virt)
 }
 
 /**
