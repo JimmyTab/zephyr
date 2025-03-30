@@ -46,6 +46,7 @@ tests:
       - nrf54l09pdk/nrf54l09/cpuapp
       - nrf54l15dk/nrf54l10/cpuapp
       - nrf54l15dk/nrf54l15/cpuapp
+      - nrf54l20pdk/nrf54l20/cpuapp
       - nrf54h20dk/nrf54h20/cpuapp
   drivers.flash.common.tfm_ns:
     build_only: true
@@ -115,3 +116,12 @@ tests:
     extra_configs:
       - CONFIG_DMA=y
       - CONFIG_SOC_FLASH_SILABS_S2_DMA_READ=y
+  drivers.flash.common.non_quad_mode:
+    extra_args:
+      - EXTRA_DTC_OVERLAY_FILE=boards/mx25r64_non_quad.overlay
+    integration_platforms:
+      - nrf52840dk/nrf52840
+      - nrf5340dk/nrf5340/cpuapp
+    platform_allow:
+      - nrf52840dk/nrf52840
+      - nrf5340dk/nrf5340/cpuapp

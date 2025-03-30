@@ -44,7 +44,11 @@ Boards
 * The DT binding :dtcompatible:`zephyr,native-posix-cpu` has been deprecated in favor of
   :dtcompatible:`zephyr,native-sim-cpu`.
 
-* Zephyr now supports version 1.11.1 of the :zephyr:board:`neorv32`.
+* Zephyr now supports version 1.11.2 of the :zephyr:board:`neorv32`. NEORV32 processor (SoC)
+  implementations need to be updated to this version to be compatible with Zephyr v4.2.0.
+
+* The :zephyr:board:`neorv32` now targets NEORV32 processor (SoC) templates via board variants. The
+  old ``neorv32`` board target is now named ``neorv32/neorv32/up5kdemo``.
 
 * ``arduino_uno_r4_minima``, ``arduino_uno_r4_wifi``, and ``mikroe_clicker_ra4m1`` have migrated to
   new FSP-based configurations.
@@ -57,6 +61,11 @@ Boards
   - :dtcompatible:`renesas,ra-sci-uart`
   - :dtcompatible:`renesas,ra-pinctrl-pfs`
   - :dtcompatible:`renesas,ra-cgc-pclk-block`
+
+* Nucleo WBA52CG board (``nucleo_wba52cg``) is not supported anymore since it is NRND
+  (Not Recommended for New Design) and it is not supported anymore in the STM32CubeWBA from
+  version 1.1.0 (July 2023). The migration to :zephyr:board:`nucleo_wba55cg` (``nucleo_wba55cg``)
+  is recommended and it could be done without any change.
 
 Device Drivers and Devicetree
 *****************************
@@ -71,6 +80,12 @@ DAI
 * Renamed the devicetree property ``mono_invert`` to ``mono-invert``.
 * Renamed the devicetree property ``quad_ch`` to ``quad-ch``.
 * Renamed the devicetree property ``int_odd`` to ``int-odd``.
+
+DMA
+===
+
+* Renamed the devicetree property ``nxp,a_on`` to ``nxp,a-on``.
+* Renamed the devicetree property ``dma_channels`` to ``dma-channels``.
 
 Counter
 =======
@@ -99,6 +114,18 @@ Ethernet
 * ``ethernet_native_posix`` has been renamed ``ethernet_native_tap``, and with it its
   kconfig options: :kconfig:option:`CONFIG_ETH_NATIVE_POSIX` and its related options have been
   deprecated in favor of :kconfig:option:`CONFIG_ETH_NATIVE_TAP` (:github:`86578`).
+
+Enhanced Serial Peripheral Interface (eSPI)
+===========================================
+
+* Renamed the devicetree property ``io_girq`` to ``io-girq``.
+* Renamed the devicetree property ``vw_girqs`` to ``vw-girqs``.
+* Renamed the devicetree property ``pc_girq`` to ``pc-girq``.
+* Renamed the devicetree property ``poll_timeout`` to ``poll-timeout``.
+* Renamed the devicetree property ``poll_interval`` to ``poll-interval``.
+* Renamed the devicetree property ``consec_rd_timeout`` to ``consec-rd-timeout``.
+* Renamed the devicetree property ``sus_chk_delay`` to ``sus-chk-delay``.
+* Renamed the devicetree property ``sus_rsm_interval`` to ``sus-rsm-interval``.
 
 GPIO
 ====
@@ -135,6 +162,13 @@ Timer
 * ``native_posix_timer`` has been renamed ``native_sim_timer``, and so its kconfig option
   :kconfig:option:`CONFIG_NATIVE_POSIX_TIMER` has been deprecated in favor of
   :kconfig:option:`CONFIG_NATIVE_SIM_TIMER`, (:github:`86612`).
+
+Modem
+=====
+
+* Removed Kconfig option :kconfig:option:`CONFIG_MODEM_CELLULAR_CMUX_MAX_FRAME_SIZE` in favor of
+  :kconfig:option:`CONFIG_MODEM_CMUX_WORK_BUFFER_SIZE` and :kconfig:option:`CONFIG_MODEM_CMUX_MTU`.
+
 
 Bluetooth
 *********
@@ -179,6 +213,11 @@ Networking
 * TLS credential type ``TLS_CREDENTIAL_SERVER_CERTIFICATE`` was renamed to
   more generic :c:enumerator:`TLS_CREDENTIAL_PUBLIC_CERTIFICATE` to better
   reflect the purpose of this credential type.
+
+* The MQTT public API function :c:func:`mqtt_disconnect` has changed. The function
+  now accepts additional ``param`` parameter to support MQTT 5.0 case. The parameter
+  is optional and not used with older MQTT versions - MQTT 3.1.1 users should pass
+  NULL as an argument.
 
 SPI
 ===
