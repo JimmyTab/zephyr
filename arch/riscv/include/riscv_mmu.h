@@ -15,6 +15,7 @@
 #define PTE_READ     (1 << 1)  // Allows read access
 #define PTE_WRITE    (1 << 2)  // Allows write access
 #define PTE_EXEC     (1 << 3)  // Allows execute access
+#define PTE_USER     (1 << 4)
 #define PTE_GLOBAL   (1 << 5)  // Makes the mapping global (not ASID-specific)
 
 #define SV32_PTE_PPN_SHIFT  12  // Physical Page Number (PPN) shift (aligns to 4 KiB)
@@ -29,6 +30,7 @@
 
 // Functions to be used by Zephyr
 void z_riscv_mm_init(void);
+void riscv_map_page(uintptr_t virt, uintptr_t phys, uint32_t flags);
 
 union riscv_l1_mmu_page_table_entry {
     struct {
