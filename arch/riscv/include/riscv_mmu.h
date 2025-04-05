@@ -22,7 +22,7 @@
 #define SV32_PTE_PPN_MASK   0xFFFFFC // Mask for PPN extraction
 #define SV32_PT_L2_ADDR_MASK   0x3FFFFF // Mask for PPN extraction
 #define SV32_PT_L2_ADDR_SHIFT   10 // Mask for PPN extraction
-#define SV32_PTE_PPN_POS    10  // Position of PPN in PTE (Sv32 stores it at bits 31-10)
+#define SV32_PTE_PPN_POS    12  // Position of PPN in PTE (Sv32 stores it at bits 31-10)
 
 // Macros to extract page table indices from a virtual address
 #define L1_INDEX(va)  (((va) >> 22) & 0x3FF)  // Level 1 (root) index from VPN[1]
@@ -31,6 +31,7 @@
 // Functions to be used by Zephyr
 void z_riscv_mm_init(void);
 void riscv_map_page(uintptr_t virt, uintptr_t phys, uint32_t flags);
+int arch_page_phys_get(void *virt, uintptr_t *phys);
 
 union riscv_l1_mmu_page_table_entry {
     struct {
