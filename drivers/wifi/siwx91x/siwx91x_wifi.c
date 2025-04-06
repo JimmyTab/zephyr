@@ -7,8 +7,9 @@
 
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/__assert.h>
-#include <nwp.h>
+#include <zephyr/version.h>
 
+#include <nwp.h>
 #include "siwx91x_wifi.h"
 #include "siwx91x_wifi_socket.h"
 
@@ -20,7 +21,7 @@
 #include "sl_wifi.h"
 #include "sl_net.h"
 
-#define SIWX91X_INTERFACE_MASK (0x03)
+#define SIWX91X_DRIVER_VERSION KERNEL_VERSION_STRING
 
 LOG_MODULE_REGISTER(siwx91x_wifi);
 
@@ -54,7 +55,7 @@ static int siwx91x_bandwidth(enum wifi_frequency_bandwidths bandwidth)
 	}
 }
 
-static int siwx91x_security(enum wifi_security_type security)
+static int siwx91x_map_ap_security(enum wifi_security_type security)
 {
 	switch (security) {
 	case WIFI_SECURITY_TYPE_NONE:
@@ -63,6 +64,8 @@ static int siwx91x_security(enum wifi_security_type security)
 		return SL_WIFI_WPA;
 	case WIFI_SECURITY_TYPE_PSK:
 		return SL_WIFI_WPA2;
+	case WIFI_SECURITY_TYPE_WPA_AUTO_PERSONAL:
+		return SL_WIFI_WPA_WPA2_MIXED;
 	default:
 		return -EINVAL;
 	}
@@ -134,8 +137,9 @@ static int siwx91x_ap_enable(const struct device *dev, struct wifi_connect_req_p
 	siwx91x_ap_cfg.channel.bandwidth = siwx91x_bandwidth(params->bandwidth);
 	strncpy(siwx91x_ap_cfg.ssid.value, params->ssid, params->ssid_length);
 
-	sec = siwx91x_security(params->security);
+	sec = siwx91x_map_ap_security(params->security);
 	if (sec < 0) {
+		LOG_ERR("Invalid security type");
 		return -EINVAL;
 	}
 
@@ -263,6 +267,10 @@ static int siwx91x_connect(const struct device *dev, struct wifi_connect_req_par
 		 * methods for SAE
 		 */
 		wifi_config.security = SL_WIFI_WPA3;
+		break;
+	case WIFI_SECURITY_TYPE_WPA_AUTO_PERSONAL:
+		/* Use WPA2/WPA3 security as the device supports both */
+		wifi_config.security = SL_WIFI_WPA3_TRANSITION;
 		break;
 	/* Zephyr WiFi shell doesn't specify how to pass credential for these
 	 * key managements.
@@ -560,8 +568,14 @@ static int siwx91x_status(const struct device *dev, struct wifi_iface_status *st
 	case SL_WIFI_OPEN:
 		status->security = WIFI_SECURITY_TYPE_NONE;
 		break;
+	case SL_WIFI_WPA:
+		status->security = WIFI_SECURITY_TYPE_WPA_PSK;
+		break;
 	case SL_WIFI_WPA2:
 		status->security = WIFI_SECURITY_TYPE_PSK;
+		break;
+	case SL_WIFI_WPA_WPA2_MIXED:
+		status->security = WIFI_SECURITY_TYPE_WPA_AUTO_PERSONAL;
 		break;
 	case SL_WIFI_WPA3:
 		status->security = WIFI_SECURITY_TYPE_SAE;
@@ -709,6 +723,36 @@ static int siwx91x_stats(const struct device *dev, struct net_stats_wifi *stats)
 }
 #endif
 
+static int siwx91x_get_version(const struct device *dev, struct wifi_version *params)
+{
+	sl_wifi_firmware_version_t fw_version = { };
+	struct siwx91x_dev *sidev = dev->data;
+	static char fw_version_str[32];
+	sl_status_t status;
+
+	__ASSERT(params, "params cannot be NULL");
+
+	if (sidev->state == WIFI_STATE_INTERFACE_DISABLED) {
+		return -EIO;
+	}
+
+	status = sl_wifi_get_firmware_version(&fw_version);
+	if (status != SL_STATUS_OK) {
+		return -EINVAL;
+	}
+
+	snprintf(fw_version_str, sizeof(fw_version_str), "%02x%02x.%d.%d.%d.%d.%d.%d",
+		 fw_version.chip_id,     fw_version.rom_id,
+		 fw_version.major,       fw_version.minor,
+		 fw_version.security_version, fw_version.patch_num,
+		 fw_version.customer_id, fw_version.build_num);
+
+	params->fw_version = fw_version_str;
+	params->drv_version = SIWX91X_DRIVER_VERSION;
+
+	return 0;
+}
+
 static void siwx91x_iface_init(struct net_if *iface)
 {
 	struct siwx91x_dev *sidev = iface->if_dev->dev->data;
@@ -755,6 +799,7 @@ static const struct wifi_mgmt_ops siwx91x_mgmt = {
 #if defined(CONFIG_NET_STATISTICS_WIFI)
 	.get_stats		= siwx91x_stats,
 #endif
+	.get_version		= siwx91x_get_version,
 };
 
 static const struct net_wifi_mgmt_offload siwx91x_api = {

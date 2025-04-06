@@ -38,6 +38,15 @@ Boards
   nRF Util can be found
   `here <https://docs.nordicsemi.com/bundle/nrfutil/page/README.html>`_.
 
+* All boards based on a Nordic IC of the nRF54L series now default to not
+  erasing any part of the internal storage when flashing. If you'd like to
+  revert to the previous default of erasing the pages that will be written to by
+  the firmware to be flashed you can use the new ``--erase-pages`` command-line
+  switch when invoking ``west flash``.
+  Note that RRAM on nRF54L devices is not physically paged, and paging is
+  only artificially provided, with a page size of 4096 bytes, for an easier
+  transition of nRF52 software to nRF54L devices.
+
 * The config option :kconfig:option:`CONFIG_NATIVE_POSIX_SLOWDOWN_TO_REAL_TIME` has been deprecated
   in favor of :kconfig:option:`CONFIG_NATIVE_SIM_SLOWDOWN_TO_REAL_TIME`.
 
@@ -111,6 +120,15 @@ Ethernet
 * Removed Kconfig option ``ETH_STM32_HAL_MII`` (:github:`86074`).
   PHY interface type is now selected via the ``phy-connection-type`` property in the device tree.
 
+* The :dtcompatible:`st,stm32-ethernet` driver now requires the ``phy-handle`` phandle to be
+  set to the according PHY node in the device tree (:github:`87593`).
+
+* The Kconfig options ``ETH_STM32_HAL_PHY_ADDRESS``, ``ETH_STM32_CARRIER_CHECK``,
+  ``ETH_STM32_CARRIER_CHECK_RX_IDLE_TIMEOUT_MS``, ``ETH_STM32_AUTO_NEGOTIATION_ENABLE``,
+  ``ETH_STM32_SPEED_10M``, ``ETH_STM32_MODE_HALFDUPLEX`` have been removed, as they are no longer
+  needed, and the driver now uses the ethernet phy api to communicate with the phy driver, which
+  is resposible for configuring the phy settings (:github:`87593`).
+
 * ``ethernet_native_posix`` has been renamed ``ethernet_native_tap``, and with it its
   kconfig options: :kconfig:option:`CONFIG_ETH_NATIVE_POSIX` and its related options have been
   deprecated in favor of :kconfig:option:`CONFIG_ETH_NATIVE_TAP` (:github:`86578`).
@@ -130,11 +148,19 @@ Enhanced Serial Peripheral Interface (eSPI)
 GPIO
 ====
 
-* To support the RP2350B, which has many pins, the RaspberryPi-GPIO configuration has
+* To support the RP2350B, which has many pins, the Raspberry Pi-GPIO configuration has
   been changed. The previous role of :dtcompatible:`raspberrypi,rpi-gpio` has been migrated to
   :dtcompatible:`raspberrypi,rpi-gpio-port`, and :dtcompatible:`raspberrypi,rpi-gpio` is
   now left as a placeholder and mapper.
   The labels have also been changed along, so no changes are necessary for regular use.
+
+Sensors
+=======
+
+* ``ltr`` vendor prefix has been renamed to ``liteon``, and with it the
+  :dtcompatible:`ltr,f216a` name has been replaced by :dtcompatible:`liteon,ltrf216a`.
+  The choice :kconfig:option:`DT_HAS_LTR_F216A_ENABLED` has been replaced with
+  :kconfig:option:`DT_HAS_LITEON_LTRF216A_ENABLED` (:github:`85453`)
 
 Serial
 =======
@@ -169,6 +195,12 @@ Modem
 * Removed Kconfig option :kconfig:option:`CONFIG_MODEM_CELLULAR_CMUX_MAX_FRAME_SIZE` in favor of
   :kconfig:option:`CONFIG_MODEM_CMUX_WORK_BUFFER_SIZE` and :kconfig:option:`CONFIG_MODEM_CMUX_MTU`.
 
+
+Stepper
+=======
+
+* Refactored the ``stepper_enable(const struct device * dev, bool enable)`` function to
+  :c:func:`stepper_enable` & :c:func:`stepper_disable`.
 
 Bluetooth
 *********
