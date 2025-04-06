@@ -4058,6 +4058,7 @@ Renesas RA Platforms:
   collaborators:
     - duynguyenxa
     - thaoluonguw
+    - thenguyenyf
   files:
     - boards/arduino/uno_r4/
     - boards/renesas/*ra*/
@@ -4088,7 +4089,6 @@ Renesas RZ Platforms:
     - dts/arm/renesas/rz/
     - dts/bindings/*/*rzt2m*
     - dts/bindings/*/*renesas,rz*
-    - soc/renesas/rzt2m/
     - soc/renesas/rz/
   labels:
     - "platforms: Renesas RZ"
@@ -4457,8 +4457,13 @@ Task Watchdog:
 TDK Sensors:
   status: maintained
   maintainers:
+    - afontaine-invn
+    - rbuisson-invn
+  collaborators:
     - teburd
     - MaureenHelm
+    - sriccardi-invn
+    - gjabouley-invn
   files:
     - drivers/sensor/tdk/
   labels:
@@ -5672,6 +5677,22 @@ Peregrine Platforms:
     - boards/peregrine/
   labels:
     - "platform: Peregrine"
+
+WCH Platforms:
+  status: maintained
+  maintainers:
+    - nzmichaelh
+    - kholia
+  collaborators:
+    - VynDragon
+  files:
+    - boards/wch/
+    - dts/riscv/wch/
+    - soc/wch/
+    - drivers/*/*wch*
+    - dts/bindings/*/wch,*
+  labels:
+    - "platform: WinChipHead"
 
 # This area is to be converted to a subarea
 Testing with Renode:
