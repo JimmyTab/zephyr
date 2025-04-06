@@ -378,7 +378,7 @@ int arch_page_phys_get(void *virt, uintptr_t *phys)
 
     // 4. Extract and return the physical address
     uintptr_t pa_ppn = l2_page_table->entries[l2_index].l2_page_4k.pa_base;
-    *phys = pa_ppn << SV32_PTE_PPN_POS;
+    *phys = pa_ppn << SV32_PTE_PPN_SHIFT;
 
     // printk("MMU: arch_page_phys_get(): L2[%d].pa_base = 0x%x -> PA 0x%lx\n",
     //    l2_index,

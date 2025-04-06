@@ -22,7 +22,7 @@
 #define SV32_PTE_PPN_MASK   0xFFFFFC // Mask for PPN extraction
 #define SV32_PT_L2_ADDR_MASK   0x3FFFFF // Mask for PPN extraction
 #define SV32_PT_L2_ADDR_SHIFT   10 // Mask for PPN extraction
-#define SV32_PTE_PPN_POS    12  // Position of PPN in PTE (Sv32 stores it at bits 31-10)
+#define SV32_ADDR_TO_PPN_SHIFT    10  // Position of PPN in PTE (Sv32 stores it at bits 31-10)
 
 // Macros to extract page table indices from a virtual address
 #define L1_INDEX(va)  (((va) >> 22) & 0x3FF)  // Level 1 (root) index from VPN[1]
