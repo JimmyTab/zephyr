@@ -312,6 +312,8 @@ config EXTRA_EXCEPTION_INFO
 config RISCV_MMU
     bool "Enable MMU support for RISC-V"
     depends on RISCV && !RISCV_PMP && !RISCV_MPU
+	select KERNEL_VM
+	select MM_DRV
     help
       Enables MMU-based memory management on RISC-V platforms.
 	  

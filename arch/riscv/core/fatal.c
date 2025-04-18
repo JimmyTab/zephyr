@@ -205,6 +205,7 @@ static bool bad_stack_pointer(struct arch_esf *esf)
 
 void z_riscv_fault(struct arch_esf *esf)
 {
+	printk("-----------triggered fault---------\n");
 #ifdef CONFIG_USERSPACE
 	/*
 	 * Perform an assessment whether an PMP fault shall be
