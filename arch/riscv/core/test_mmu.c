@@ -24,10 +24,63 @@
      *addr = value;
  }
  
+ /* Helper function to read a value from a physical address */
+ static uint32_t read_physical_address(uintptr_t addr)
+ {
+     volatile uint32_t *ptr = (volatile uint32_t *)addr;
+     return *ptr;
+ }
+ 
+ /*---------------- Virtual Write, Physical Read Test ----------------*/
+ static void test_virtual_write_physical_read(void)
+ {
+     uintptr_t phys_page;
+     uintptr_t virt_addr = TEST_PAGE_VIRT_BASE + TEST_PAGE_SIZE * 2; // Allocate a new virtual address
+     volatile uint32_t *test_virt_addr = (volatile uint32_t *)virt_addr;
+     uint32_t test_pattern = 0xAABBCCDD;
+     uint32_t read_phys_value;
+     uintptr_t retrieved_phys_addr;
+     int result;
+ 
+     printk("TEST: Virtual Write, Physical Read\n");
+ 
+     /* Allocate a physical page */
+     void *allocated_page = k_malloc(TEST_PAGE_SIZE);
+     zassert_not_null(allocated_page, "Failed to allocate physical page.");
+     phys_page = (uintptr_t)allocated_page;
+ 
+     /* Map the virtual address to the physical page with read/write permissions */
+     riscv_map_page(virt_addr, phys_page, PTE_VALID | PTE_READ | PTE_WRITE);
+ 
+     /* Write a test pattern to the virtual address */
+     sys_memory_barrier();
+     write_virtual_address(test_virt_addr, test_pattern);
+     sys_memory_barrier();
+ 
+     /* Get the physical address corresponding to the virtual address */
+     result = arch_page_phys_get((void *)virt_addr, &retrieved_phys_addr);
+     zassert_equal(result, 0, "Failed to get physical address for virtual address 0x%x", virt_addr);
+     zassert_equal(retrieved_phys_addr, phys_page, "Retrieved physical address (0x%lx) does not match allocated physical address (0x%lx)",
+                   retrieved_phys_addr, phys_page);
+ 
+     /* Read the value directly from the physical address */
+     read_phys_value = read_physical_address(phys_page);
+ 
+     /* Assert that the value read from the physical address matches the written value */
+     zassert_equal(read_phys_value, test_pattern, "Virtual write, physical read test failed: Physical read value (0x%x) != Written value (0x%x)",
+                   read_phys_value, test_pattern);
+ 
+     /* Unmap the page and free the physical memory */
+     riscv_unmap_page(virt_addr);
+     k_free(allocated_page);
+ 
+     printk("TEST: Virtual Write, Physical Read - PASSED\n");
+ }
+ 
  /*---------------- Identity Mapping Test ----------------*/
  static void test_identity_mapping(void)
  {
-     uintptr_t test_phys_addr = (uintptr_t)&_kernel_text_start; // Choose a physical address in kernel text
+     uintptr_t test_phys_addr = (uintptr_t)&__text_region_start; // Choose a physical address in kernel text
      volatile uint32_t *test_virt_addr = (volatile uint32_t *)test_phys_addr;
      uint32_t original_value;
      uint32_t read_value;
@@ -36,7 +89,7 @@
      printk("TEST: Identity Mapping\n");
  
      /* Ensure the test address is within the kernel identity mapping */
-     if ((uintptr_t)test_virt_addr < (uintptr_t)&_kernel_text_start || (uintptr_t)test_virt_addr >= (uintptr_t)&_kernel_text_end) {
+     if ((uintptr_t)test_virt_addr < (uintptr_t)&__text_region_start || (uintptr_t)test_virt_addr >= (uintptr_t)&__text_region_end) {
          ztest_test_skip("Test address not within kernel identity mapping.");
          return;
      }
@@ -141,13 +194,15 @@
  void test_main(void)
  {
      ztest_test_suite(mmu_tests,
-              ztest_unit_test(test_identity_mapping),
-              ztest_unit_test(test_permission_read_only),
-              ztest_unit_test(test_permission_no_access)
-              );
+                      ztest_unit_test(test_identity_mapping),
+                      ztest_unit_test(test_permission_read_only),
+                      ztest_unit_test(test_permission_no_access),
+                      ztest_unit_test(test_virtual_write_physical_read) // Add the new test
+                      );
  
-     /* You might need to call z_riscv_mm_init() here if it's not automatically
-      * called before your tests run in your Zephyr configuration. */
+     /* We likely need to call z_riscv_mm_init() here to initialize the MMU
+      * before running the tests. */
      printk("Running MMU tests...\n");
+     z_riscv_mm_init(); // Initialize the MMU
      ztest_run_test_suite(mmu_tests);
  }
