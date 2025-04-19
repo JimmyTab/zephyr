@@ -9,6 +9,7 @@
 #define PAGE_SIZE 4096  // 4 KiB page size for Sv32
 #define PTE_SIZE 4      // Each PTE (Page Table Entry) is 4 bytes
 #define RISCV_MMU_PT_NUM_ENTRIES 1024 //Number of entries  per page table 
+#define MAX_L2_TABLES 16
 
 // Define bit flags for PTE entries
 #define PTE_VALID    (1 << 0)  // Marks entry as valid
@@ -30,7 +31,7 @@
 
 // Functions to be used by Zephyr
 void z_riscv_mm_init(void);
-void riscv_map_page(uintptr_t virt, uintptr_t phys, uint32_t flags);
+int riscv_map_page(uintptr_t virt, uintptr_t phys, uint32_t flags);
 int arch_page_phys_get(void *virt, uintptr_t *phys);
 
 union riscv_l1_mmu_page_table_entry {
